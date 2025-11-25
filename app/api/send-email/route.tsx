@@ -1,6 +1,20 @@
-import { type NextRequest, NextResponse } from "next/server"
-import nodemailer from "nodemailer"
+import { type NextRequest, NextResponse } from "next/server";
+import nodemailer from "nodemailer";
+import { v4 as uuidv4 } from "uuid";
+import { createClient } from "@supabase/supabase-js";
 
+// Función para generar un token único basado en UUID
+export function generateUniqueToken(transactionId: string): string {
+  return `${transactionId}-${uuidv4()}`;
+}
+
+// Inicializar cliente de Supabase
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// Crear el transportador de Nodemailer
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number.parseInt(process.env.SMTP_PORT || "587"),
@@ -9,13 +23,16 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
-})
+});
 
 export async function POST(request: NextRequest) {
   try {
-    const { to, subject, type, data } = await request.json()
+    const { to, subject, type, data } = await request.json();
 
-    let html = ""
+    // Crear un enlace único para el pago con el token generado
+    const paymentLink = `https://localhost:3000/api/confirm-payment?transaction_id=${data.transaction_id}&token=${generateUniqueToken(data.transaction_id)}`;
+
+    let html = "";
 
     if (type === "reservation") {
       html = `
@@ -35,7 +52,8 @@ export async function POST(request: NextRequest) {
           <div style="background-color: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
             <h4 style="color: #92400e; margin-top: 0;">⚠️ Importante - Instrucciones de Pago</h4>
             <p style="color: #92400e;">Tienes <strong>3 minutos</strong> para realizar el pago. Después de este tiempo, tu reserva expirará automáticamente.</p>
-            <p style="color: #92400e;">Para completar tu pago, contacta al administrador o utiliza los métodos de pago disponibles.</p>
+            <p style="color: #92400e;">Para completar tu pago, haz clic en el siguiente enlace:</p>
+            <a href="${paymentLink}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Confirmar Pago</a>
           </div>
 
           <p>Una vez confirmado el pago, recibirás un correo de confirmación con tu código QR de acceso.</p>
@@ -43,75 +61,24 @@ export async function POST(request: NextRequest) {
           <p>¡Gracias por tu reserva!</p>
           <p><strong>Equipo Unlock</strong></p>
         </div>
-      `
-    } else if (type === "payment_confirmed") {
-      html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #059669;">¡Pago Confirmado!</h2>
-          <p>Hola ${data.userName},</p>
-          <p>Tu pago para <strong>${data.eventName}</strong> ha sido confirmado exitosamente.</p>
-          
-          <div style="background-color: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #065f46; margin-top: 0;">✅ Reserva Confirmada</h3>
-            <p><strong>Evento:</strong> ${data.eventName}</p>
-            <p><strong>Monto Pagado:</strong> $${data.amount}</p>
-            <p><strong>Estado:</strong> Pagado</p>
-          </div>
-
-          <p>Tu reserva está confirmada. Presenta tu código QR al momento del evento para el acceso.</p>
-          
-          <p>¡Nos vemos en el evento!</p>
-          <p><strong>Equipo Unlock</strong></p>
-        </div>
-      `
-    } else if (type === "payment_rejected") {
-      html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #dc2626;">Pago Rechazado</h2>
-          <p>Hola ${data.userName},</p>
-          <p>Lamentamos informarte que tu pago para <strong>${data.eventName}</strong> ha sido rechazado.</p>
-          
-          <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #991b1b; margin-top: 0;">❌ Pago No Procesado</h3>
-            <p><strong>Evento:</strong> ${data.eventName}</p>
-            <p><strong>Monto:</strong> $${data.amount}</p>
-            <p><strong>Estado:</strong> Rechazado</p>
-          </div>
-
-          <p>Si crees que esto es un error, por favor contacta al administrador para más información.</p>
-          
-          <p><strong>Equipo Unlock</strong></p>
-        </div>
-      `
+      `;
     }
 
-    else if (type === "reset_password") {
-      const confirmationUrl = data?.confirmationUrl || data?.ConfirmationURL || data?.confirmationURL || "#"
-
-      html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Reset Password</h2>
-          <p>Follow this link to reset the password for your user:</p>
-          <p><a href="${confirmationUrl}">Reset Password</a></p>
-          <p>If you did not request a password reset, you can safely ignore this email.</p>
-          <p><strong>Equipo Unlock</strong></p>
-        </div>
-      `
-    }
-
+    // Configuración del correo
     const mailOptions = {
       from: process.env.SMTP_FROM,
       to,
       subject,
       html,
-    }
+    };
 
-    await transporter.sendMail(mailOptions)
-    console.log("[v0] Email sent successfully to:", to)
+    // Enviar correo
+    await transporter.sendMail(mailOptions);
+    console.log("[v0] Email sent successfully to:", to);
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[v0] Error sending email:", error)
-    return NextResponse.json({ error: "Failed to send email" }, { status: 500 })
+    console.error("[v0] Error sending email:", error);
+    return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
   }
 }

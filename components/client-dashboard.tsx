@@ -222,7 +222,9 @@ const fetchData = async () => {
         throw new Error(error.message);
       }
 
-      console.log("[v0] Transaction created successfully:", transaction.id);
+      // Verifica que la transacción se ha creado correctamente
+      console.log("[v0] Transaction created:", transaction);
+
 
       // Llamada a la API para enviar el correo de confirmación
       const response = await fetch("/api/send-email", {
