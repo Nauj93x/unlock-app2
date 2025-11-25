@@ -1,6 +1,7 @@
+import 'dotenv/config';
 import nodemailer from "nodemailer"
 
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
   port: Number.parseInt(process.env.SMTP_PORT || "587"),
   secure: false,
@@ -18,22 +19,29 @@ export interface EmailData {
 
 export async function sendEmail(emailData: EmailData) {
   try {
-    console.log("[v0] Sending email to:", emailData.to)
+    console.log("[v0] Sending email to:", emailData.to);
 
     const info = await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: emailData.to,
       subject: emailData.subject,
       html: emailData.html,
-    })
+    });
 
-    console.log("[v0] Email sent successfully:", info.messageId)
-    return { success: true, messageId: info.messageId }
-  } catch (error) {
-    console.error("[v0] Error sending email:", error)
-    return { success: false, error: error.message }
+    console.log("[v0] Email sent successfully:", info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error: unknown) {
+    // Verificamos si error es una instancia de Error
+    if (error instanceof Error) {
+      console.error("[v0] Error sending email:", error.message);
+      return { success: false, error: error.message };
+    } else {
+      console.error("[v0] Unknown error:", error);
+      return { success: false, error: "Unknown error" };
+    }
   }
 }
+
 
 export function generateReservationEmail(userName: string, eventName: string, amount: number) {
   return `

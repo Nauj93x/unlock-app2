@@ -9,13 +9,13 @@ async function requireAdmin() {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await (await supabase).auth.getUser()
 
   if (!user) {
     throw new Error("Not authenticated")
   }
 
-  const { data: profile, error } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+  const { data: profile, error } = await (await supabase).from("profiles").select("role").eq("id", user.id).single()
 
   if (error || profile?.role !== "administrador") {
     throw new Error("Admin access required")
@@ -28,7 +28,7 @@ async function requireAdmin() {
 export async function getAllProfiles() {
   const { supabase } = await requireAdmin()
 
-  const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
+  const { data, error } = await (await supabase).from("profiles").select("*").order("created_at", { ascending: false })
 
   if (error) {
     throw new Error(`Failed to fetch profiles: ${error.message}`)
@@ -41,7 +41,7 @@ export async function getAllProfiles() {
 export async function updateUserRole(userId: string, newRole: "cliente" | "administrador") {
   const { supabase } = await requireAdmin()
 
-  const { data, error } = await supabase.from("profiles").update({ role: newRole }).eq("id", userId).select().single()
+  const { data, error } = await (await supabase).from("profiles").update({ role: newRole }).eq("id", userId).select().single()
 
   if (error) {
     throw new Error(`Failed to update user role: ${error.message}`)
@@ -62,7 +62,7 @@ export async function createEvent(eventData: {
 }) {
   const { user, supabase } = await requireAdmin()
 
-  const { data, error } = await supabase
+  const { data, error } = await (await supabase)
     .from("events")
     .insert({
       ...eventData,
@@ -84,7 +84,7 @@ export async function createEvent(eventData: {
 export async function getAllEvents() {
   const { supabase } = await requireAdmin()
 
-  const { data, error } = await supabase.from("events").select("*").order("date", { ascending: true })
+  const { data, error } = await (await supabase).from("events").select("*").order("date", { ascending: true })
 
   if (error) {
     throw new Error(`Failed to fetch events: ${error.message}`)
@@ -97,7 +97,7 @@ export async function getAllEvents() {
 export async function getAllReservations() {
   const { supabase } = await requireAdmin()
 
-  const { data, error } = await supabase
+  const { data, error } = await (await supabase)
     .from("reservations")
     .select(
       `
@@ -123,13 +123,13 @@ export async function getUserReservations() {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await (await supabase).auth.getUser()
 
   if (!user) {
     throw new Error("Not authenticated")
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await (await supabase)
     .from("reservations")
     .select(
       `
@@ -151,7 +151,7 @@ export async function getUserReservations() {
 // Obtener todos los eventos activos (sin requerir admin)
 export async function getPublicEvents() {
   const supabase = createClient()
-  const { data, error } = await supabase
+  const { data, error } = await (await supabase)
     .from("events")
     .select("*")
     .eq("status", "active")
