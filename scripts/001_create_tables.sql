@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS public.reservations (
   accommodation_id UUID REFERENCES public.accommodations(id),
   check_in_date DATE,
   check_out_date DATE,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled')),
+  status TEXT NOT NULL DEFAULT 'pendiente' CHECK (status IN ('pendiente', 'confirmed', 'checked_in', 'checked_out', 'cancelled')),
   qr_code TEXT UNIQUE,
   total_amount DECIMAL(10,2),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

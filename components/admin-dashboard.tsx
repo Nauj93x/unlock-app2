@@ -830,7 +830,7 @@ const fetchData = async () => {
                             variant={
                               reservation.status === "confirmed"
                                 ? "default"
-                                : reservation.status === "pending"
+                                : reservation.status === "pendiente"
                                   ? "secondary"
                                   : "destructive"
                             }
@@ -1179,7 +1179,7 @@ const fetchData = async () => {
                           variant={
                             reservation.status === "confirmed"
                               ? "default"
-                              : reservation.status === "pending"
+                              : reservation.status === "pendiente"
                                 ? "secondary"
                                 : reservation.status === "checked_in"
                                   ? "default"
@@ -1188,7 +1188,7 @@ const fetchData = async () => {
                         >
                           {reservation.status === "confirmed"
                             ? "Confirmada"
-                            : reservation.status === "pending"
+                            : reservation.status === "pendiente"
                               ? "Pendiente"
                               : reservation.status === "checked_in"
                                 ? "Check-in realizado"

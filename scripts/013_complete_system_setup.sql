@@ -32,8 +32,8 @@ UPDATE public.transactions
 SET fecha_creacion = COALESCE(created_at, now())
 WHERE fecha_creacion IS NULL;
 
--- 4. Create function to expire pending transactions
-CREATE OR REPLACE FUNCTION public.expire_pending_transactions()
+-- 4. Create function to expire pendiente transactions
+CREATE OR REPLACE FUNCTION public.expire_pendiente_transactions()
 RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   UPDATE public.transactions
@@ -85,7 +85,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.run_maintenance()
 RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
-  PERFORM public.expire_pending_transactions();
+  PERFORM public.expire_pendiente_transactions();
   PERFORM public.update_event_states();
 END;
 $$;

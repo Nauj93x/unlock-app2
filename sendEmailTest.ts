@@ -1,10 +1,10 @@
 import dotenv from "dotenv";
-dotenv.config({ path: ".env.local" }); // 👈 importante
+dotenv.config({ path: ".env.local" }); 
 
 import { sendEmail, generateReservationEmail } from "./lib/email-service";
 
 async function testSendEmail() {
-  console.log("SMTP_USER:", process.env.SMTP_USER); // 👈 para verificar
+  console.log("SMTP_USER:", process.env.SMTP_USER); 
 
   const emailData = {
     to: " juanpi240205@gmail.com",

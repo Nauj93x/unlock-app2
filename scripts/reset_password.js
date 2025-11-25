@@ -55,7 +55,7 @@ async function resetByEmail(email, password) {
 
   if (listResult.error) return { data: null, error: listResult.error }
 
-  // listResult.data may be { users: [...] } or an array depending on SDK/version
+  // listResult.data may be { users: [...] } or an array dependiente on SDK/version
   let users = null
   if (Array.isArray(listResult.data)) {
     users = listResult.data

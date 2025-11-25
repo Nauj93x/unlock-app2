@@ -173,34 +173,36 @@ const fetchData = async () => {
 
 
   const makeReservation = async (eventId: string, accommodationId?: string) => {
-    setProcessingReservation(true)
+    setProcessingReservation(true);
     try {
-      console.log("[v0] Creating transaction for event:", eventId, "accommodation:", accommodationId)
+      console.log("[v0] Creating transaction for event:", eventId, "accommodation:", accommodationId);
 
-      const event = events.find((e) => e.id === eventId)
-      const accommodation = accommodationId ? accommodations.find((a) => a.id === accommodationId) : null
+      const event = events.find((e) => e.id === eventId);
+      const accommodation = accommodationId ? accommodations.find((a) => a.id === accommodationId) : null;
 
       if (!event) {
-        throw new Error("Evento no encontrado")
+        throw new Error("Evento no encontrado");
       }
 
       const { count: currentReservations } = await supabase
         .from("transactions")
         .select("*", { count: "exact" })
         .eq("event_id", eventId)
-        .in("status", ["pending", "paid"])
+        .in("status", ["pendiente", "pagado"]);
 
-      if (currentReservations >= event.max_capacity) {
-        throw new Error("Este evento ya alcanzó su capacidad máxima")
+      if (currentReservations === null) {
+        throw new Error("No se pudieron obtener las reservas actuales.");
       }
 
 
-      const baseEventCost = 100
-      const accommodationCost = accommodation ? accommodation.price_per_night * 2 : 0
-      const totalAmount = baseEventCost + accommodationCost
 
-      const expirationTime = new Date()
-      expirationTime.setMinutes(expirationTime.getMinutes() + 3)
+      // Calcular el costo total
+      const baseEventCost = 100; // Costo base del evento
+      const accommodationCost = accommodation ? accommodation.price_per_night * 2 : 0; // Costo de alojamiento
+      const totalAmount = baseEventCost + accommodationCost;
+
+      const expirationTime = new Date();
+      expirationTime.setMinutes(expirationTime.getMinutes() + 3);
 
       const { data: transaction, error } = await supabase
         .from("transactions")
@@ -209,66 +211,65 @@ const fetchData = async () => {
           event_id: eventId,
           accommodation_id: accommodationId || null,
           amount: totalAmount,
-          status: "pending",
+          status: "pendiente",
           created_at: new Date().toISOString(),
           expires_at: expirationTime.toISOString(),
         })
-
         .select()
-        .single()
+        .single();
 
       if (error) {
-        throw new Error(error.message)
+        throw new Error(error.message);
       }
 
-      console.log("[v0] Transaction created successfully:", transaction.id)
+      console.log("[v0] Transaction created successfully:", transaction.id);
 
-      try {
-        const response = await fetch("/api/send-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+      // Llamada a la API para enviar el correo de confirmación
+      const response = await fetch("/api/send-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: profile?.email || user?.email || "",
+          subject: `Reserva para ${event.name} - Pago Pendiente`,
+          type: "reservation",
+          data: {
+            userName: profile?.full_name || "Usuario",
+            eventName: event.name,
+            amount: totalAmount,
+            expirationTime: expirationTime.toLocaleString(),
           },
-          body: JSON.stringify({
-            to: profile?.email || user?.email || "",
-            subject: `Reserva para ${event.name} - Pago Pendiente`,
-            type: "reservation",
-            data: {
-              userName: profile?.full_name || "Usuario",
-              eventName: event.name,
-              amount: totalAmount,
-              expirationTime: expirationTime.toLocaleString(),
-            },
-          }),
-        })
+        }),
+      });
 
-        if (response.ok) {
-          console.log("[v0] Reservation email sent successfully")
-        }
-      } catch (emailError) {
-        console.error("[v0] Error sending reservation email:", emailError)
+      if (response.ok) {
+        console.log("[v0] Reservation email sent successfully");
       }
 
-      setShowReservationModal(false)
-      setSelectedEvent(null)
-      setSelectedAccommodation(null)
-      fetchData()
+      // Cerrar el modal y resetear la selección
+      setShowReservationModal(false);
+      setSelectedEvent(null);
+      setSelectedAccommodation(null);
+      fetchData();
 
       toast({
         title: "¡Reserva creada!",
         description: `Tu reserva ha sido creada. Tienes 3 minutos para realizar el pago de $${totalAmount}. Revisa tu correo.`,
-      })
+      });
     } catch (error) {
-      console.error("[v0] Error creating reservation:", error)
+      const e = error as Error; // Hacer un cast explícito
+      console.error("[v0] Error creating reservation:", e.message);
       toast({
         variant: "destructive",
         title: "Error al crear reserva",
-        description: error.message || "No se pudo crear la reserva. Inténtalo de nuevo.",
-      })
+        description: e.message || "No se pudo crear la reserva. Inténtalo de nuevo.",
+      });
     } finally {
-      setProcessingReservation(false)
+      setProcessingReservation(false);
     }
-  }
+  };
+
 
   const openReservationModal = (event: Event) => {
     if (event.estado === "cerrado") {
@@ -453,17 +454,17 @@ const fetchData = async () => {
                       </div>
                       <Badge
                         variant={
-                          transaction.status === "paid"
+                          transaction.status === "pagado"
                             ? "default"
-                            : transaction.status === "pending"
+                            : transaction.status === "pendiente"
                               ? "secondary"
                               : "destructive"
                         }
                       >
-                        {transaction.status === "paid"
-                          ? "Paid"
-                          : transaction.status === "pending"
-                            ? "Pending"
+                        {transaction.status === "pagado"
+                          ? "pagado"
+                          : transaction.status === "pendiente"
+                            ? "pendiente"
                             : transaction.status === "expired"
                               ? "Expired"
                               : "Rejected"}
@@ -477,7 +478,7 @@ const fetchData = async () => {
                         <br />
                         {new Date(transaction.created_at).toLocaleString()}
                       </div>
-                      {transaction.expires_at && transaction.status === "pending" && (
+                      {transaction.expires_at && transaction.status === "pendiente" && (
                         <div>
                           <span className="font-medium">Expires at:</span>
                           <br />
@@ -489,7 +490,7 @@ const fetchData = async () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <div className="text-lg font-semibold text-blue-600">Total: ${transaction.amount}</div>
-                      {transaction.status === "paid" && (
+                      {transaction.status === "pagado" && (
                         <div className="text-center">
                           <QRCode
                             value={`${transaction.user_id}-${transaction.event_id}-${transaction.id}`}
@@ -499,10 +500,10 @@ const fetchData = async () => {
                         </div>
                       )}
                     </div>
-                    {transaction.status === "pending" && transaction.expires_at && (
+                    {transaction.status === "pendiente" && transaction.expires_at && (
                       <div className="p-3 bg-yellow-50 rounded-lg">
                         <p className="text-sm text-yellow-800">
-                          <strong>Pending payment:</strong> You have until{" "}
+                          <strong>pendiente payment:</strong> You have until{" "}
                           {new Date(transaction.expires_at).toLocaleString()} to make the payment.
                         </p>
                       </div>
